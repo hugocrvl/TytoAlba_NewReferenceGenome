@@ -65,11 +65,15 @@ sed 's/^>/>ON_Mo_/' hifiasm.Mo/asm.p_ctg.fa >hifiasm_Mo.fa
 for p1 in Fa Mo; do for p2 in Fa Mo; do echo "$p1 vs $p2"; minimap2 -t 40 -x asm5 -I 12G --secondary=no $p1.0518.p_ctg.fa.gz hifiasm_$p2.fa |perl -ane 'print if ($F[3]-$F[2])>=40000'>$p1.0518.vs.$p2.paf; done; done
 ```
 
+## Prepare alignments targeting the zero coverage regions and Regions Of Interest between assembled contigs
+
+```console
 ./runLastz
 
 ./doMafft ROI_regions_tags.txt
 
 ./move2LG 
+```
 
 ## Iterative process to create each polished chromosome based on the Linkage Groups
 
