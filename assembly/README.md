@@ -1,31 +1,31 @@
-== Version of hifiasm used for HiFi reads assembly ==
+## Version of hifiasm used for HiFi reads assembly
 
-'''
+```console
 hifiasm  --version
 0.19.8-r603
-'''
+```
 
-== Assembly of Father and Mother alleles ==
+## Assembly of Father and Mother alleles
 
-'''
+```console
 hifiasm -o /data/chris/tyto/20240518Fa/asm -t 72 --primary -D 10.0 -N 1000 --max-kocc 20000 --n-hap 1 --ul SOL000x_SUP_20k_cutdup.fq.gz,LR_40k.fq.gz /data/chris/tyto/20240518Fa/{other,musat,telomers}.fq.gz /data/chris/tyto/20240518Fa/Unslct.{other,musat,telomers}.fq.gz 2>&1 | tee 20240518Fa_log.txt
 hifiasm -o /data/chris/tyto/20240518Mo/asm -t 72 --primary -D 10.0 -N 1000 --max-kocc 20000 --n-hap 1 --ul SOL000x_SUP_20k_cutdup.fq.gz,LR_40k.fq.gz /data/chris/tyto/20240518Mo/{other,musat,telomers}.fq.gz /data/chris/tyto/20240518Fa/Unslct.{other,musat,telomers}.fq.gz 2>&1 | tee 20240518Mo_log.txt
-'''
+```
 
 == Mapping of some mRNA of interest and all HiFi reads to the assembled contigs ==
 
-'''
+```console
 pushd /data/chris/tyto/20240518Fa/
 minimap2 -x splice:hq asm.p_ctg.fa ~/tyto/SeqGeneForChristian.fasta >Fa_mRNA.paf
 cd ../20240518Mo/
 minimap2 -x splice:hq asm.p_ctg.fa ~/tyto/SeqGeneForChristian.fasta >Mo_mRNA.paf
 
 ./doMapMoFa 
-'''
+```
 
-== Compute coverage by the HiFi reads on the assembled contigs ==
+## Compute coverage by the HiFi reads on the assembled contigs
 
-'''
+```console
 sort -m -k 6,6 -k 8,8n -S 10% /data/chris/tyto/20240518Fa/m64???_*.paf >m64_all_Fa.paf &
 sort -m -k 6,6 -k 8,8n -S 10% /data/chris/tyto/20240518Mo/m64???_*.paf >m64_all_Mo.paf &
 
@@ -33,13 +33,13 @@ sort -m -k 6,6 -k 8,8n -S 10% /data/chris/tyto/20240518Mo/m64???_*.paf >m64_all_
 ./genCoverage m64_all_Mo.paf >m64_all_Mo_cov.txt &
 
 ./analyzeCov >zero_cov_regions.txt
-'''
+```
 
-== Determine zero coverage regions to be further investigated ==
+## Determine zero coverage regions to be further investigated
 
-'''
+```console
 ./grabCandidates zero_cov_regions.txt >zero_cov_regions_tags.txt
-'''
+```
 
 
 hifiasm --version
