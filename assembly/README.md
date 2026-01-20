@@ -55,6 +55,8 @@ hifiasm --version
 hifiasm --ont -o hifiasm.Fa/asm -t 40 --primary --n-hap 1 -l 0 --min-hist-cnt 3 ON?.{Father,Unslct}.{other,musat,telo}.fq.gz 2>&1 | tee hifiasm_Fa_log.txt
 hifiasm --ont -o hifiasm.Mo/asm -t 40 --primary --n-hap 1 -l 0 --min-hist-cnt 3 ON?.{Mother,Unslct}.{other,musat,telo}.fq.gz 2>&1 | tee hifiasm_Mo_log.txt
 
+for p in Fa Mo; do grep ^S hifiasm.$p/asm.p_ctg.gfa | perl -ane 'printf ">%s\n%s\n", $F[1], $F[2]' >hifiasm.$p/asm.p_ctg.fa; done
+
 sed 's/^>/>ON_Fa_/' hifiasm.Fa/asm.p_ctg.fa >hifiasm_Fa.fa
 sed 's/^>/>ON_Mo_/' hifiasm.Mo/asm.p_ctg.fa >hifiasm_Mo.fa
 ```
