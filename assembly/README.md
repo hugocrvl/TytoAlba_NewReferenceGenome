@@ -1,3 +1,15 @@
+## Split HiFi reads in categories based on sequence features
+
+```console
+./splitFqHifiReads
+```
+
+## Futher split HiFi reads based on expected allelic origin
+
+```console
+./gatherMergedFaMo5
+```
+
 ## Version of hifiasm used for HiFi reads assembly
 
 ```console
