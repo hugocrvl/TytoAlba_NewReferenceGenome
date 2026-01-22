@@ -1,0 +1,70 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use IO::Pipe;
+my $table = "ON_25k_parent_and_chimera_infos.txt";
+local *IN;
+my %R;
+my %col;
+open IN, $table or die "Can't read $table : $!";
+while ( <IN> ) {
+  s/\s+$//s;
+  my @F = split /\t/;
+  if ($F[0] eq "id") {
+    for my $i (0 .. $#F) {
+      $col{$F[$i]} = $i;
+    }
+    next;
+  }
+  next if $F[$col{'status'}] ne "select";
+  my $kind = $F[$col{'kind'}];
+  next if $kind ne "other" and $kind ne "musat" and $kind ne "telo";
+  my $parent = $F[$col{'parent'}];
+  $parent = "Unslct" if $parent eq "unknown";
+  my $name = "$parent.$kind";
+  $R{$F[0]} = [ $name, $F[$col{'breakNum'}], $F[$col{'CovEnd'}] ];
+}
+close IN;
+for my $fq ( "ON1_25k.fq.gz", "ON2_25k.fq.gz" ) {
+  my $on = substr $fq, 0, 3;
+  my %H;
+  for my $parent ( "Father", "Mother", "Unslct" ) {
+    for my $kind ( "musat", "other", "telo" ) {
+      my $name = "$parent.$kind";
+      $H{$name} = new IO::Pipe;
+      $H{$name}->writer("gzip -c > $on.$name.fq.gz");
+    }
+  }
+  open IN, "gzip -dc $fq |" or die "Can't read $fq : $!";
+  while ( <IN> ) {
+    my ($id) = $_ =~ /^.(\S+)/;
+    die "grmp $_" unless defined $id;
+    my $seq = <IN>;
+    my $p = <IN>;
+    my $q = <IN>;
+    next unless defined $R{$id};
+    my $name = $R{$id}->[0];
+    if ($R{$id}->[1] != 0) {
+      # need to cut this one
+      $seq = substr $seq, 0, $R{$id}->[2];
+      $seq .= "\n";
+      $q = substr $q, 0, $R{$id}->[2];
+      $q .= "\n";
+    }
+    print {$H{$name}} $_, $seq, $p, $q;
+  }
+  close IN;
+}
+exit 0;
+__END__
+==> ON_25k_parent_and_chimera_infos.txt <==
+id	len	kind	parent	kind_padj	id_ori	FcntMean	McntMean	highest_parent_mean	pval	hitCnt	CovEnd	NextCovStart	breakOverlap	otherMatchMedianDV	hairpinSelfMatchMedianDV	repeatSelfMatchMedian	breakNum	status
+ON1_00000000	33956	other	unknown	NA	8082fec0-c476-46f6-a96f-00166d1d4966	0	0	NA	NA	59	NA	NA	NA	0.1519	NA	NA	0	select
+ON1_00000001	32189	other	unknown	NA	1e5e8e61-6f88-4a41-98fb-33085fa58253	0	0	NA	NA	39	NA	NA	NA	0.1547	NA	NA	0	select
+ON1_00000002	30387	other	Father	2.00949667426764e-17	907f525e-2d20-495e-af33-2fc87a787306	36.6666666666667	4.33333333333333	Father	1.18201325811787e-17	40	NA	NA	NA	0.07085	NA	NA	0	select
+ON1_00000003	37292	kineto	Father	1.43730136901707e-13	2ade742f-a8e1-4c5a-b401-5a812686a4e2	29	3	Father	9.57774912267937e-14	820	NA	NA	NA	0.29845	NA	0.252	0	filter
+ON1_00000004	33247	other	unknown	NA	13e694f7-c128-43e3-b958-6e6a1f8bc0e4	0	0	NA	NA	39	NA	NA	NA	0.1922	NA	NA	0	select
+ON1_00000005	42916	other	unknown	NA	7a76d736-d7b9-4ee3-9f70-5431b9c22e92	2	0	Father	NA	47	NA	NA	NA	0.0936	NA	NA	0	select
+ON1_00000006	29699	other	unknown	NA	0b67f8d9-33dc-45d2-9bd1-c529b4b74c59	0	0	NA	NA	40	NA	NA	NA	0.10815	NA	NA	0	select
+ON1_00000007	40196	other	Mother	0.0102424041540151	354c0933-dc20-4692-9c5c-7a57812073ad	0	0.333333333333333	Mother	0.00964096724500254	39	NA	NA	NA	0.1676	NA	NA	0	select
+ON1_00000008	29281	other	Father	8.08315072590715e-07	8cfeeecb-7a60-4635-98c7-aac3b4a4f8e2	4	0	Father	6.85825660330532e-07	40	NA	NA	NA	0.1093	NA	NA	0	select

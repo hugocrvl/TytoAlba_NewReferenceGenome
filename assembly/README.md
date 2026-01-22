@@ -61,6 +61,12 @@ hifiasm --version
 0.25.0-r726
 ```
 
+## Split ON reads in categories based on sequence features and expected allelic origin
+
+```console
+./prepareONreads
+```
+
 ## Assembly of Father and Mother alleles using ON reads only
 
 ```console
