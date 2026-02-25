@@ -1,6 +1,8 @@
-# This scipt collects KMERS present in parental illumina libraries
-# kmers that are fed to jellyfish are already filtered and lexically oriented.
-# it is important to NOT use the option -C when building the database for consistency during subsequent merging and handling of databases.
+#!/usr/bin/perl
+#
+# random list of selected reads (argument 1) will be chopped in kmers
+# only kmers without N will be printed
+# they are printed in lexically sorted orientation (e.g. revcomp if needed)
 #
 # (c) N.Guex 2024-2025
 # Bioinformatics Competence Center (BICC)
@@ -10,10 +12,48 @@
 #
 # NG 20240213
 
-KMER=49
+use strict;
+my $kmerLen = $ARGV[0];
+my $fn = $ARGV[1];
+my @desiredLine;
+my $l = 0;
 
-time  ./jellyfish count -o  mother.jf${KMER}.L1.Uinf.selection1.bin  -m $KMER -c 4 -t 24 -L1 -s 8589934592 <(gzip -dc /tmp/nguex/Goudet/M028977_R1_paired.fq.gz        | ./collectKmerWithoutN.pl $KMER mother_selection1.txt ; gzip -dc /tmp/nguex/Goudet/M028977_R2_paired.fq.gz        | ../collectKmerWithoutN.pl $KMER mother_selection1.txt)
-time  ./jellyfish count -o  mother.jf${KMER}.L1.Uinf.selection2.bin  -m $KMER -c 4 -t 24 -L1 -s 8589934592 <(gzip -dc /tmp/nguex/Goudet/M028977_R1_paired.fq.gz        | ./collectKmerWithoutN.pl $KMER mother_selection2.txt ; gzip -dc /tmp/nguex/Goudet/M028977_R2_paired.fq.gz        | ../collectKmerWithoutN.pl $KMER mother_selection2.txt)
-time  ./jellyfish count -o  father.jf${KMER}.L1.Uinf.selection1.bin  -m $KMER -c 4 -t 24 -L1 -s 8589934592 <(gzip -dc /tmp/nguex/Goudet/M032330H_40_L?_R1_paired.fq.gz | ./collectKmerWithoutN.pl $KMER father_selection1.txt ; gzip -dc /tmp/nguex/Goudet/M032330H_40_L?_R2_paired.fq.gz | ../collectKmerWithoutN.pl $KMER father_selection1.txt)
-time  ./jellyfish count -o  father.jf${KMER}.L1.Uinf.selection2.bin  -m $KMER -c 4 -t 24 -L1 -s 8589934592 <(gzip -dc /tmp/nguex/Goudet/M032330H_40_L?_R1_paired.fq.gz | ./collectKmerWithoutN.pl $KMER father_selection2.txt ; gzip -dc /tmp/nguex/Goudet/M032330H_40_L?_R2_paired.fq.gz | ../collectKmerWithoutN.pl $KMER father_selection2.txt)
-time  ./jellyfish count -o  father.jf${KMER}.L1.Uinf.selection3.bin  -m $KMER -c 4 -t 24 -L1 -s 8589934592 <(gzip -dc /tmp/nguex/Goudet/M032330H_40_L?_R1_paired.fq.gz | ./collectKmerWithoutN.pl $KMER father_selection3.txt ; gzip -dc /tmp/nguex/Goudet/M032330H_40_L?_R2_paired.fq.gz | ../collectKmerWithoutN.pl $KMER father_selection3.txt)
+# ----- load lines to consider
+open F, "$fn" or die "cannot open $fn\n";
+while(<F>)
+{
+    chomp;
+    $desiredLine[$l++] = $_;
+}
+close F;
+
+# ----------- print kmers of desired lines
+my $line = 1;
+my $idx = 0;
+my $validKmersCnt = 0;
+while(<STDIN>)
+{
+    my $SEQ = <STDIN>;
+    <STDIN>;
+    <STDIN>; # quality
+    if ($line == $desiredLine[$idx])
+    {
+        chomp($SEQ);
+        for (my $i=0; $i<= (length($SEQ)-$kmerLen); $i++) {
+            my $kmer = substr($SEQ,$i,$kmerLen);
+            unless ($kmer =~ /N/)
+      {
+        my $REV = reverse($kmer);
+        $REV =~ tr/ACGTacgt/TGCAtgca/;
+        if ($kmer le $REV) { print ">$line\n$kmer\n"; } else { print ">$line\n$REV\n"; }
+        $validKmersCnt++;
+      }
+        }
+        $idx++;
+        if ($idx == $l) { last; }
+    }
+    $line++;
+}
+#-----------------------
+print STDERR "$fn:$validKmersCnt\n";
+
