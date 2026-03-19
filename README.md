@@ -1,9 +1,3 @@
 # TytoAlba_NewReferenceGenome
 
-Scripts and documents related to the new reference of Tyto alba, DOI: XXX
-
-1.
-2.
-3.
-4.
-5.
+A repository containing all the scripts and documents associated to the new reference of Tyto alba - DOI: XXX
