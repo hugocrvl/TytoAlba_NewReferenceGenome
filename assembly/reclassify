@@ -1,0 +1,120 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+my $chunk = 30000;
+my %C;
+my $map = "m64_all_tab_map_MoFa_contig_gfa.txt";
+my $pval = "/home/nguex/GOUDET/allele_sort/20240419/HiFi_ReadParentSelection_v2.txt";
+local *IN;
+open IN, $map or die "Can't read $map : $!";
+my %H;
+while ( <IN> ) {
+  s/\s+$//s;
+  my @F = split /\t/;
+  if ($F[0] eq "id") {
+    for my $i (0 .. $#F) {
+      $H{$F[$i]} = $i;
+    }
+    next
+  }
+  for my $j ($H{'Fatctg'}, $H{'Motctg'}) {
+    next if $F[$j] eq "NA";
+    my $p1 = int($F[$j+2] / $chunk);
+    my $p2 = int(($F[$j+2] + $F[$H{'len'}]) / $chunk);
+    if ($p2 > $p1) {
+      $C{$F[$j]} = [] unless defined $C{$F[$j]};
+      $C{$F[$j]}->[$p2] = { 'Father' => [ 0, [] ], 'Mother' => [ 0, [] ], 'Unknown' => [ 0, [] ] } unless defined $C{$F[$j]}->[$p2];
+      $C{$F[$j]}->[$p2]->{$F[$H{'parent'}]}->[0] += 1;
+      push @{$C{$F[$j]}->[$p2]->{$F[$H{'parent'}]}->[1]}, $F[0];
+    }
+  }
+}
+close IN;
+my %P;
+open IN, $pval or die "Can't read $pval : $!";
+while ( <IN> ) {
+  s/^#//;
+  s/\s+$//s;
+  my @F = split /\t/;
+  next if $F[0] eq "id";
+  my $parent = $F[2];
+  $parent = $F[6] if $parent eq "Unknown";
+  $P{$F[0]} = [ $parent, $F[3] ];
+}
+close IN;
+open IN, $map or die "Can't read $map : $!";
+my %RR;
+while ( <IN> ) {
+  my @F = split /\t/;
+  if ($F[0] eq "id") {
+    splice @F, $H{'parent'} + 1, 0, "reclassify";
+    print join("\t", @F);
+    next
+  }
+  my $imbalanced;
+  my %R;
+  for my $j ($H{'Fatctg'}, $H{'Motctg'}) {
+    next if $F[$j] eq "NA";
+    my $p1 = int($F[$j+2] / $chunk);
+    my $p2 = int(($F[$j+2] + $F[$H{'len'}]) / $chunk);
+    if ($p2 > $p1) {
+      for my $r (@{$C{$F[$j]}->[$p2]->{'Father'}->[1]}, @{$C{$F[$j]}->[$p2]->{'Mother'}->[1]}, @{$C{$F[$j]}->[$p2]->{'Unknown'}->[1]}) {
+	$R{$r} = 1;
+      }
+      my $fa = $C{$F[$j]}->[$p2]->{'Father'}->[0];
+      my $mo = $C{$F[$j]}->[$p2]->{'Mother'}->[0];
+      my $unk = $C{$F[$j]}->[$p2]->{'Unknown'}->[0];
+      my $tot = $fa + $mo + $unk;
+      my $totP = $tot;
+      if (defined $C{$F[$j]}->[$p2-1]) {
+	$totP = $C{$F[$j]}->[$p2-1]->{'Father'}->[0] + $C{$F[$j]}->[$p2-1]->{'Mother'}->[0] + $C{$F[$j]}->[$p2-1]->{'Unknown'}->[0];
+      }
+      my $totN = $tot;
+      if (defined $C{$F[$j]}->[$p2+1]) {
+	$totN = $C{$F[$j]}->[$p2+1]->{'Father'}->[0] + $C{$F[$j]}->[$p2+1]->{'Mother'}->[0] + $C{$F[$j]}->[$p2+1]->{'Unknown'}->[0];
+      }
+      # Meh...
+      $imbalanced = 1 if ($tot >= 70 or $totN >= 70 or $totP >= 70) and ($fa / $tot < 0.2 or $mo / $tot < 0.2);
+    }
+  }
+  if (defined $imbalanced) {
+    unless (defined $RR{$F[0]}) {
+      my @A = sort { $P{$a}->[0] cmp $P{$b}->[0] || ($P{$a}->[0] eq "Father" ? $P{$a}->[1] <=> $P{$b}->[1] : $P{$b}->[1] <=> $P{$a}->[1]) } (keys %R);
+      print STDERR "Sorting for $F[0]\n";
+      my $mid = int(($#A+1) / 2);
+      for my $i (0 .. $#A) {
+	$RR{$A[$i]} = $i < $mid ? "Father" : "Mother";
+	printf STDERR "  %u\t%s\t%s\t%s\t%s\n", $i, $A[$i], $RR{$A[$i]}, $P{$A[$i]}->[0], $P{$A[$i]}->[1];
+      }
+    }
+    splice @F, $H{'parent'} + 1, 0, $RR{$F[0]};
+  } else {
+    splice @F, $H{'parent'} + 1, 0, $F[$H{'parent'}];
+  }
+  print join("\t", @F);
+}
+close IN;
+exit 0;
+__END__
+==> /home/nguex/GOUDET/allele_sort/20240419/HiFi_ReadParentSelection_v2.txt <==
+id	kind	parent	kind_padj	FcntMean	McntMean	lowConfidenceParent
+#00000000	other	Unknown	0.670625873626648	21.3333333333333	18	Father
+#00000001	other	Mother	2.18857616604411e-17	NA	NA	NA
+#00000002	other	Mother	1.67358914423857e-20	NA	NA	NA
+#00000003	other	Father	2.80703646741894e-09	NA	NA	NA
+#00000004	other	Unknown	0.0588499698348344	43.3333333333333	32.3333333333333	Father
+#00000005	other	Father	1.81916086643561e-05	NA	NA	NA
+#00000006	other	Father	1.27553340297356e-16	NA	NA	NA
+#00000007	other	Mother	0.0002806051128973	NA	NA	NA
+#00000008	other	Mother	1.08531903263315e-17	NA	NA	NA
+==> m64_all_tab_map_MoFa_contig_gfa.txt <==
+id	fqid	kind	len	rounds	qual	parent	Faqstart	Faqend	Fastrand	Fatctg	Fatlen	Fatstart	Fatend	Famatched	Famcnt	Moqstart	Moqend	Mostrand	Motctg	Motlen	Motstart	Motend	Momatched	Momcnt	FaGctg	FaGpos	FaGstrand	FaGcnt	MoGctg	MoGpos	MoGstrand	MoGcnt	FaYCqstart	FaYCqend	FaYCstrand	FaYCtchr	FaYCtlen	FaYCtstart	FaYCtend	FaYCmatched	FaYCmcnt	MoYCqstart	MoYCqend	MoYCstrand	MoYCtchr	MoYCtlen	MoYCtstart	MoYCtend	MoYCmatched	MoYCmcnt	das	mas	dae	mae	fn	rn	snA	snC	snG	snT	zm
+00000000	m64046_200313_184523/12/ccs	other	11123	10	0.999566	Unknown	0	11123	+	Fa_000164l	5153890	857875	868994	10717	1	0	11123	+	Mo_000018l	36248181	30328794	30339918	11047	1	NA	NA	NA	0	NA	NA	NA	0	0	11123	+	chr8D_Fa	36397697	27305032	27316151	10717	1	0	11123	+	chr8C_Mo	36931531	27893794	27904918	11047	1	12	0	10	0	5	5	11.0491	17.2073	3.812	6.85627	12
+00000001	m64046_200313_184523/14/ccs	other	13496	14	0.999817	Mother	9	13495	-	Fa_000028l	15570512	12171947	12185461	12792	1	9	13495	+	Mo_000060l	22364893	9515706	9529188	13198	1	NA	NA	NA	0	NA	NA	NA	0	9	13495	+	chr1_03_Fa	59509119	24457670	24471184	12792	1	9	13495	+	chr1D_Mo	60720157	24877429	24890911	13198	1	14	0	16	0	7	7	11.0218	17.8727	4.05437	7.04241	14
+00000002	m64046_200313_184523/44/ccs	other	16108	14	0.999542	Mother	13	16104	-	Fa_000013l	15456138	8607134	8623239	15289	1	13	16104	+	Mo_000097l	19115838	14954432	14970532	15862	1	NA	NA	NA	0	NA	NA	NA	0	13	16104	-	chr6_Fa	40907981	26092542	26108647	15289	1	13	16104	-	chr6A_Mo	41018104	26213572	26229672	15862	1	14	0	14	2	6	6	11.0499	17.5555	3.85477	6.79135	44
+00000003	m64046_200313_184523/32/ccs	other	17344	10	0.999392	Father	8	17334	-	Fa_000200l	6063455	1649182	1666520	17160	1	8	17334	+	Mo_000022l	18786200	13037549	13054922	15493	1	NA	NA	NA	0	NA	NA	NA	0	8	17334	-	chr2C_Fa	18381417	5588564	5605902	17160	1	8	17334	-	chr2B_Mo	19373465	5731278	5748651	15493	1	10	0	12	0	4	5	12.6311	19.1112	4.24859	7.5792	32
+00000004	m64046_200313_184523/33/ccs	other	12020	16	0.999899	Unknown	17	12010	+	Fa_000030l	16844855	13023038	13035035	11939	1	17	12010	-	Mo_000024l	47892845	32637604	32649601	11939	1	NA	NA	NA	0	NA	NA	NA	0	17	12010	-	chr1_00_Fa	63175046	50140011	50152008	11939	1	17	12010	-	chr1B_Mo	62686492	49147096	49159093	11939	1	16	0	17	0	8	8	12.2095	18.3273	3.83378	7.39312	33
+00000005	m64046_200313_184523/37/ccs	other	14395	4	0.993589	Father	22	14379	-	Fa_000027l	17955966	8245948	8260346	12851	1	22	14379	+	Mo_000003l	18239104	3336948	3351346	12856	1	NA	NA	NA	0	NA	NA	NA	0	22	14379	-	chr2A_Fa	40803333	19176031	19190429	12851	1	22	14379	-	chr2A_Mo	41209531	19492659	19507057	12856	1	4	0	6	0	2	2	12.2381	19.3427	4.01246	7.58216	37
+00000006	m64046_200313_184523/38/ccs	other	11599	13	0.997933	Father	NA	NA	NA	NA	NA	NA	NA	NA	0	NA	NA	NA	NA	NA	NA	NA	NA	0	NA	NA	NA	0	NA	NA	NA	0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	15	0	13	0	6	4	8.44669	13.0839	3.06991	5.21212	38
+00000007	m64046_200313_184523/1/ccs	other	12027	15	0.999892	Mother	4	12014	-	Fa_000036l	24552529	4164381	4176392	11303	1	4	12014	+	Mo_000153l	2477892	1885932	1897946	11066	1	NA	NA	NA	0	NA	NA	NA	0	4	12014	+	chr4A_Fa	24552529	20376137	20388148	11303	1	4	12014	+	chr4A_Mo	24395427	20266930	20278944	11066	1	16	0	16	0	8	7	14.1517	20.6111	4.79861	8.93138	1
+00000008	m64046_200313_184523/3/ccs	other	11695	7	0.995174	Mother	11	11682	-	Fa_000057l	15525052	4898532	4910196	10193	1	11	11682	+	Mo_000086l	12244886	7278841	7290463	10719	1	NA	NA	NA	0	NA	NA	NA	0	11	11682	+	chr19_Fa	14146000	9235804	9247468	10193	1	11	11682	+	chr19_Mo	13940086	8974041	8985663	10719	1	8	0	8	0	3	4	10.805	16.4873	3.54197	6.51607	3
