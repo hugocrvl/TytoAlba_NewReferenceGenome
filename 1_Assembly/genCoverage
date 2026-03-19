@@ -1,0 +1,142 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+my $map = "/home/iseli/tyto/m64_all_tab_map_MoFa_reclassify.txt";
+my %P;
+my %CL;
+local *IN;
+open IN, $map or die "Can't read $map : $!";
+while ( <IN> ) {
+  my @F = split /\t/;
+  $P{$F[0]} = $F[7];
+  $CL{$F[0]} = $F[2];
+}
+close IN;
+# increase for LR on ON
+#my $tl = 500;
+my $tl = 1500;
+my $step = 200;
+my $cut = 2000;
+my $minHigh = 40;
+my $maxLow = 20;
+my %C = ("Father" => 0, "Mother" => 0, "Unknown" => 0, "centromers" => 0, "kinetochores" => 0, "musat" => 0, "other" => 0, "telomers" => 0);
+my $cur;
+my $len;
+print join("\t","id","len","start","end","chimera","high1","low","high2","Father","Mother","Unknown","centromers","kinetochores","musat","other","telomers","cov"), "\n";
+while ( <> ) {
+  # could look for overhangs at the beginning and at the end
+  my @F = split /\t/;
+  if (defined($cur) and $cur ne $F[5]) {
+    &process;
+    %C = ("Father" => 0, "Mother" => 0, "Unknown" => 0, "centromers" => 0, "kinetochores" => 0, "musat" => 0, "other" => 0, "telomers" => 0);
+    undef $cur;
+    undef $len;
+  }
+  unless (defined $cur) {
+    $cur = $F[5];
+    $len = $F[6];
+  }
+  next if $F[2] > $tl or ($F[1] - $F[3]) > $tl;
+  my $p1 = int(($F[7] + $cut)/$step);
+  my $p2 = int(($F[8] - $cut)/$step);
+  next if $p2 <= $p1;
+  my $id = substr $F[0], 0, 8;
+  if (defined($P{$id}) and defined($CL{$id})) {
+    $C{$P{$id}} += 1;
+    $C{$CL{$id}} += 1;
+  } else {
+    $C{"Unknown"} += 1;
+    $C{"other"} += 1;
+  }
+  for my $p ($p1 .. $p2) {
+    $C{$p} += 1;
+  }
+}
+&process if defined $cur;
+exit 0;
+
+sub process {
+  my $max = int($len/$step);
+  my @A;
+  my $start;
+  my $end;
+  my $chimera;
+  my $high1;
+  my $low;
+  my $high2;
+  my $wasZero;
+  for my $p (0 .. $max) {
+    my $v = 0;
+    $v = $C{$p} if defined $C{$p};
+    push @A, $v;
+    if ($v == 0) {
+      if (defined $start) {
+	$wasZero = $p unless defined $wasZero;
+	if (not defined $end) {
+	  $end = $p - 1 if $p > 0;
+	}
+      }
+    } else {
+      undef $end;
+      if (defined $start) {
+	if (defined $wasZero) {
+	  $chimera = $wasZero unless defined $chimera;
+	}
+	if ($v >= $minHigh) {
+	  $high1 = $p unless defined $high1;
+	  if (defined $low) {
+	    $high2 = $p unless defined $high2;
+	  }
+	} elsif ($v <= $maxLow) {
+	  if (defined $high1) {
+	    $low = $p unless defined $low;
+	  }
+	}
+      } else {
+	$start = $p;
+      }
+    }
+  }
+  print join("\t",$cur,$len);
+  for my $i ($start, $end, $chimera, $high1, $low, $high2) {
+    if (defined $i) {
+      print "\t", $i * $step + 1;
+    } else {
+      print "\tNA";
+    }
+  }
+  for my $e ("Father","Mother","Unknown","centromers","kinetochores","musat","other","telomers") {
+    print "\t", $C{$e};
+  }
+  print "\t", join(";",@A), "\n";
+}
+__END__
+00045828|np:i:16|rq:f:0.999921	9959	61	9952	+	ac099a18-caea-4086-acf4-48b499dd9748	173449	39	9927	8951	9898	0	tp:A:S	cm:i:1632	s1:i:8949	dv:f:0.0022	rl:i:1103
+20824349|np:i:8|rq:f:0.999283	30681	3	30212	-	ac099a18-caea-4086-acf4-48b499dd9748	173449	39	30230	28769	30250	0	tp:A:S	cm:i:5231	s1:i:28753	dv:f:0.0028	rl:i:1423
+21139148|np:i:10|rq:f:0.999394	17147	548	17138	+	ac099a18-caea-4086-acf4-48b499dd9748	173449	39	16626	15438	16609	0	tp:A:S	cm:i:2807	s1:i:15435	dv:f:0.0027	rl:i:1183
+30066934|np:i:5|rq:f:0.994601	30430	59	30421	+	ac099a18-caea-4086-acf4-48b499dd9748	173449	39	30317	28002	30431	0	tp:A:P	cm:i:4915	s1:i:27976	s2:i:27940	dv:f:0.0066	rl:i:1458
+21218572|np:i:4|rq:f:0.991898	17341	6	17333	-	ac099a18-caea-4086-acf4-48b499dd9748	173449	157	17465	15426	17383	0	tp:A:S	cm:i:2637	s1:i:15412	dv:f:0.0091	rl:i:1185
+00313865|np:i:5|rq:f:0.99478	16857	1	16855	+	ac099a18-caea-4086-acf4-48b499dd9748	173449	189	17002	15101	16897	0	tp:A:S	cm:i:2627	s1:i:15085	dv:f:0.0081	rl:i:1198
+00998107|np:i:8|rq:f:0.998495	14662	1	14661	+	ac099a18-caea-4086-acf4-48b499dd9748	173449	297	14934	13506	14671	0	tp:A:S	cm:i:2441	s1:i:13499	dv:f:0.0034	rl:i:1122
+00776182|np:i:15|rq:f:0.99994	17483	8	17482	-	ac099a18-caea-4086-acf4-48b499dd9748	173449	336	17800	16341	17488	0	tp:A:S	cm:i:2979	s1:i:16334	dv:f:0.0025	rl:i:1245
+21404384|np:i:5|rq:f:0.994968	25007	9	24992	-	ac099a18-caea-4086-acf4-48b499dd9748	173449	682	25708	23011	25095	1	tp:A:P	cm:i:4026	s1:i:22990	s2:i:22929	dv:f:0.0066	rl:i:1321
+10591588|np:i:15|rq:f:0.999922	16218	1	16213	+	ac099a18-caea-4086-acf4-48b499dd9748	173449	738	16936	15089	16224	0	tp:A:S	cm:i:2751	s1:i:15083	dv:f:0.0024	rl:i:1232
+
+cut -f 8 /home/iseli/tyto/m64_all_tab_map_MoFa_reclassify.txt|sort|uniq -c
+4034914 Father
+3791990 Mother
+      1 reclassify
+ 257566 Unknown
+
+cut -f 3 /home/iseli/tyto/m64_all_tab_map_MoFa_reclassify.txt|sort|uniq -c
+  25436 centromers
+      1 kind
+ 232983 kinetochores
+ 250594 musat
+7569183 other
+   6274 telomers
+
+==> /home/iseli/tyto/m64_all_tab_map_MoFa_reclassify.txt <==
+id	fqid	kind	len	rounds	qual	parent	reclassify	Faqstart	Faqend	Fastrand	Fatctg	Fatlen	Fatstart	Fatend	Famatched	Famcnt	Moqstart	Moqend	Mostrand	Motctg	Motlen	Motstart	Motend	Momatched	Momcnt	FaGctg	FaGpos	FaGstrand	FaGcnt	MoGctg	MoGpos	MoGstrand	MoGcnt	FaYCqstart	FaYCqend	FaYCstrand	FaYCtchr	FaYCtlen	FaYCtstart	FaYCtend	FaYCmatched	FaYCmcnt	MoYCqstart	MoYCqend	MoYCstrand	MoYCtchr	MoYCtlen	MoYCtstart	MoYCtend	MoYCmatched	MoYCmcnt	das	mas	dae	mae	fn	rn	snA	snC	snG	snT	zm
+00000000	m64046_200313_184523/12/ccs	other	11123	10	0.999566	Unknown	Mother	0	11123	+	Fa_000164l	5153890	857875	868994	10717	1	0	11123	+	Mo_000018l	36248181	30328794	30339918	11047	1	NA	NA	NA	0	NA	NA	NA	0	0	11123	+	chr8D_Fa	36397697	27305032	27316151	10717	1	0	11123	+	chr8C_Mo	36931531	27893794	27904918	11047	1	12	0	10	0	5	5	11.0491	17.2073	3.812	6.85627	12
+00000001	m64046_200313_184523/14/ccs	other	13496	14	0.999817	Mother	Mother	9	13495	-	Fa_000028l	15570512	12171947	12185461	12792	1	9	13495	+	Mo_000060l	22364893	9515706	9529188	13198	1	NA	NA	NA	0	NA	NA	NA	0	9	13495	+	chr1_03_Fa	59509119	24457670	24471184	12792	1	9	13495	+	chr1D_Mo	60720157	24877429	24890911	13198	1	14	0	16	0	7	7	11.0218	17.8727	4.05437	7.04241	14
