@@ -1,0 +1,105 @@
+#!/usr/bin/perl
+# biccsrv3_iseli: ./splitHifiReads
+# Found 24858 centromer, 200430 kinetochore and 6533303 other reads
+use strict;
+use warnings;
+my $centro = "CAGCACTGTTTCCTCCAAACTACCATGCTGCGCATAGCAATCCCTGTCTAGCTGCTTCCTTTCACTGGGAACACA";
+my $kineto = "GTCACGTGGTC";
+my $telo = "TTAGGGTTAGGGTTAGGG";
+my $musat = "ACCTTCCCCCCACCCCTCCCTTCTTCCCGGGCTCAGCTCTGCTCCCGATATCTCTACCTCCTCC";
+local *IN;
+local *CT;
+local *KT;
+local *TT;
+local *MT;
+local *OT;
+my @fq = glob "m64*.fastq.gz";
+my $cntC = 0;
+my $cntK = 0;
+my $cntT = 0;
+my $cntM = 0;
+my $cntO = 0;
+my $cnt = 0;
+open CT, "| bgzip -c --threads 4 >centromers.fq.gz" or die "Can't create centromers.fq.gz : $!";
+open KT, "| bgzip -c --threads 4 >kinetochores.fq.gz" or die "Can't create kinetochores.fq.gz : $!";
+open TT, "| bgzip -c --threads 4 >telomers.fq.gz" or die "Can't create telomers.fq.gz : $!";
+open MT, "| bgzip -c --threads 4 >musat.fq.gz" or die "Can't create musat.fq.gz : $!";
+open OT, "| bgzip -c --threads 10 >other.fq.gz" or die "Can't create other.fq.gz : $!";
+my $crev = reverse $centro;
+$crev =~ tr/ACGT/TGCA/;
+my $krev = reverse $kineto;
+$krev =~ tr/ACGT/TGCA/;
+my $trev = reverse $telo;
+$trev =~ tr/ACGT/TGCA/;
+my $mrev = reverse $musat;
+$mrev =~ tr/ACGT/TGCA/;
+my $cpat = qr/($centro|$crev)/;
+my $kpat = qr/($kineto|$krev)/;
+my $tpat = qr/($telo|$trev)/;
+my $mpat = qr/($musat|$mrev)/;
+for my $file (@fq) {
+  #last if $cntC > 10000 or $cntK > 10000 or $cntO > 10000;
+  print STDERR "Processing $file";
+  open IN, "gzip -dc $file |" or die "Can't open $file : $!";
+  while ( <IN> ) {
+    #last if $cntC > 10000 or $cntK > 10000 or $cntO > 10000;
+    my $seq = <IN>;
+    my $f = <IN>;
+    my $q = <IN>;
+    $cnt += 1;
+    print STDERR "." if $cnt % 10000 == 0;
+    if ($seq =~ /$cpat/) {
+      print CT $_,$seq,$f,$q;
+      $cntC += 1;
+      next
+    }
+    my @K = $seq =~ /$kpat/g;
+    if ($#K >= 2) {
+      print KT $_,$seq,$f,$q;
+      $cntK += 1;
+      next
+    }
+    my @T = $seq =~ /$tpat/g;
+    if ($#T >= 2) {
+      print TT $_,$seq,$f,$q;
+      $cntT += 1;
+      next
+    }
+    if ($seq =~ /$mpat/) {
+      print MT $_,$seq,$f,$q;
+      $cntM += 1;
+      next
+    }
+    print OT $_,$seq,$f,$q;
+    $cntO += 1
+  }
+  close IN;
+  print STDERR "\nPrecessed $cnt entries in $file\n";
+  $cnt = 0;
+}
+close OT;
+close MT;
+close KT;
+close TT;
+close CT;
+print STDERR "Found $cntC centromer, $cntK kinetochore, $cntT telomer, $cntM musat and $cntO other reads\n";
+exit 0;
+__END__
+
+Version: 1.15.1-61-g1858eed
+Usage:   bgzip [OPTIONS] [FILE] ...
+Options:
+   -b, --offset INT           decompress at virtual file pointer (0-based uncompressed offset)
+   -c, --stdout               write on standard output, keep original files unchanged
+   -d, --decompress           decompress
+   -f, --force                overwrite files without asking
+   -g, --rebgzip              use an index file to bgzip a file
+   -h, --help                 give this help
+   -i, --index                compress and create BGZF index
+   -I, --index-name FILE      name of BGZF index file [file.gz.gzi]
+   -k, --keep                 don't delete input files during operation
+   -l, --compress-level INT   Compression level to use when compressing; 0 to 9, or -1 for default [-1]
+   -r, --reindex              (re)index compressed file
+   -s, --size INT             decompress INT bytes (uncompressed size)
+   -t, --test                 test integrity of compressed file
+   -@, --threads INT          number of compression threads to use [1]

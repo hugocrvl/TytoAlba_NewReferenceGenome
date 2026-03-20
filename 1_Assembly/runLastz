@@ -1,0 +1,116 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+local *FD;
+local *OUT;
+my $minlen = 300000;
+mkdir "aln" unless -d "aln";
+my $ta = "/tmp/chris/a.fa";
+my $tb = "/tmp/chris/b.fa";
+my $format = "general:nmismatch,length1,name1,size1,strand1,start1,end1,name2,size2,strand2,start2,end2,text1,diff,text2";
+for my $p ( "Fa", "Mo" ) {
+  my %P;
+  my $paf = "$p.0518.vs.$p.paf";
+  open FD, $paf or die "Can't read $paf : $!";
+  while ( <FD> ) {
+    my @F = split /\t/;
+    next if $F[3]-$F[2] < $minlen;
+    my $pair = "$F[5]\t$F[0]";
+    $P{$pair} = 1;
+  }
+  close FD;
+  my $curLG;
+  for my $pair (sort keys %P) {
+    my ($lg, $ptg) = split /\t/, $pair;
+    print STDERR "Processing $lg vs $ptg";
+    my $of = "aln/$lg.$ptg.aln";
+    if (not defined($curLG) or $curLG ne $lg) {
+      $curLG = $lg;
+      #system "zgrep -A 1 $lg all_$p.fa.gz >$ta";
+      system "fetch -c /scratch/tyto/fetch.conf ctg:$lg >$ta";
+      die "Failed to retrieve $lg" unless -s $ta;
+    }
+    system "grep -A 1 $ptg /data2/chris/tyto/hifiasm.$p/asm.p_ctg.fa >$tb";
+    die "Failed to retrieve $ptg" unless -s $tb;
+    open FD, "lastz --ambiguous=n --step=10 --seed=match15 --notransition --exact=501 --chain --allocate:traceback=2G ‑‑format=$format $ta $tb |" or die "Can't launch lastz : $!";
+    open OUT, ">$of" or die "Can't create $of : $!";
+    my $cnt = 0;
+    while ( <FD> ) {
+      if (/^#/) {
+	print OUT $_;
+	next;
+      }
+      my @F = split /\t/;
+      next if $F[1] < $minlen;
+      print OUT $_;
+      $cnt += 1;
+    }
+    close OUT;
+    close FD;
+    print STDERR " ==> $cnt alignments >= $minlen\n";
+    unlink $of if $cnt == 0;
+  }
+}
+exit 0;
+__END__
+-rw-r--r--. 1 iseli bix  356427864 Jul 16 10:19 all_Fa.fa.gz
+-rw-r--r--. 1 iseli bix  355209101 Jul 16 10:19 all_Mo.fa.gz
+-rw-r--r--. 1 iseli bix 1365307877 Jul 21 15:45 hifiasm.Fa/asm.p_ctg.fa
+-rw-r--r--. 1 iseli bix 1369696844 Jul 21 15:46 hifiasm.Mo/asm.p_ctg.fa
+
+==> /data6/tyto/finish/oriented/contig_table.txt <==
+LG       contig      start     end       strand  cstart    cend      clen
+Fa_LG01  Fa_000052l  1         2541203   +       1         2541203   2541203
+Fa_LG01  N           2541204   2551203   +       1         10000     10000
+Fa_LG01  Fa_000031l  2551204   17580819  -       45635518  60665133  15029616
+Fa_LG01  linker      17580820  17593607  -       1         12788     12788
+Fa_LG01  Fa_000031l  17593608  63216445  -       1         45622838  45622838
+Mo_LG01  Mo_000052l  1         3162356   -       1         3162356   3162356
+Mo_LG01  N           3162357   3172356   +       1         10000     10000
+Mo_LG01  Mo_000065l  3172357   18127968  -       5821      14961432  14955612
+Mo_LG01  linker      18127969  18140756  -       1         12788     12788
+Mo_LG01  Mo_000051l  18140757  65602771  +       5792      47467806  47462015
+
+=> Fa.vs.Fa.paf <=
+ptg000029l  8400165   8      8387842   -  Fa_LG01  63216445  12630     8355534   7223907   8393035   60  tp:A:P  cm:i:712692   s1:i:7214903   s2:i:49936   dv:f:0.0002  rl:i:1261994
+ptg000223l  5580095   13     5580057   -  Fa_LG01  63216445  8366372   13939531  5509804   5582020   60  tp:A:P  cm:i:548903   s1:i:5507929   s2:i:7131    dv:f:0.0001  rl:i:103653
+ptg000126l  7766605   7      7766591   -  Fa_LG01  63216445  13942561  21708336  7676188   7768420   60  tp:A:P  cm:i:764712   s1:i:7675320   s2:i:3784    dv:f:0.0000  rl:i:150479
+ptg000026l  9359833   17     9359799   -  Fa_LG01  63216445  21725152  31086285  9256162   9362573   60  tp:A:P  cm:i:922008   s1:i:9255222   s2:i:129423  dv:f:0.0000  rl:i:173879
+ptg000675l  174531    13     174517    -  Fa_LG01  63216445  22326648  22502075  169891    175553    60  tp:A:P  cm:i:16664    s1:i:169679    s2:i:132019  dv:f:0.0012  rl:i:1240
+ptg000512l  78806     16     78791     -  Fa_LG01  63216445  24216743  24295538  73350     78816     60  tp:A:P  cm:i:7140     s1:i:73332     s2:i:240     dv:f:0.0006  rl:i:2200
+ptg000065l  9896321   2      9896317   +  Fa_LG01  63216445  31092016  40990172  9807488   9898614   60  tp:A:P  cm:i:977710   s1:i:9806859   s2:i:9286    dv:f:0.0000  rl:i:155097
+ptg000335l  1563984   15     1563984   -  Fa_LG01  63216445  40990567  42554798  1552143   1564289   60  tp:A:P  cm:i:154947   s1:i:1552060   s2:i:327     dv:f:0.0000  rl:i:19816
+ptg000291l  146891    18     146882    -  Fa_LG01  63216445  40996255  41143148  146357    146897    60  tp:A:P  cm:i:14600    s1:i:146348    s2:i:222     dv:f:0.0000  rl:i:929
+ptg000448l  123004    26     122987    +  Fa_LG01  63216445  42127435  42250461  116543    123132    60  tp:A:P  cm:i:11430    s1:i:116463    s2:i:140     dv:f:0.0004  rl:i:1783
+ptg000120l  3818946   33     3818919   +  Fa_LG01  63216445  42544943  46365053  3786124   3820305   60  tp:A:P  cm:i:376999   s1:i:3785738   s2:i:1180    dv:f:0.0000  rl:i:52662
+ptg000928l  61162     18     61158     +  Fa_LG01  63216445  43220640  43281896  58835     61289     60  tp:A:P  cm:i:5765     s1:i:58799     s2:i:427     dv:f:0.0002  rl:i:494
+ptg000017l  16740526  10048  16740514  -  Fa_LG01  63216445  46482168  63216435  16611966  16735165  60  tp:A:P  cm:i:1657481  s1:i:16610656  s2:i:6768    dv:f:0.0000  rl:i:208889
+ptg000908l  276455    4      276428    +  Fa_LG01  63216445  50075085  50351530  269882    276591    60  tp:A:P  cm:i:26614    s1:i:269800    s2:i:370     dv:f:0.0002  rl:i:3349
+
+=> Mo.vs.Mo.paf <=
+ptg000057l  7728011   4565397  7716865   -  Mo_LG01  65602771  9953      3162328   1488514   3152566   60  tp:A:P  cm:i:141533   s1:i:1488268   s2:i:23081   dv:f:0.0001  rl:i:1891913
+ptg000057l  7728011   7        4385679   -  Mo_LG01  65602771  3172371   7559670   4324551   4387625   60  tp:A:P  cm:i:430497   s1:i:4324010   s2:i:1681    dv:f:0.0000  rl:i:1891913
+ptg000081l  15372013  41       15372010  -  Mo_LG01  65602771  7571692   22947362  15186411  15376455  60  tp:A:P  cm:i:1513031  s1:i:15185147  s2:i:6064    dv:f:0.0000  rl:i:308472
+ptg000647l  120844    6        120835    +  Mo_LG01  65602771  18536340  18657145  114935    120923    60  tp:A:P  cm:i:11290    s1:i:114875    s2:i:138     dv:f:0.0003  rl:i:701
+ptg000280l  1205213   3        1205206   +  Mo_LG01  65602771  22974640  24180145  1193651   1205568   60  tp:A:P  cm:i:119151   s1:i:1193543   s2:i:3961    dv:f:0.0000  rl:i:21179
+ptg000016l  15525433  8        15525431  -  Mo_LG01  65602771  24180486  39707283  15361933  15529548  60  tp:A:P  cm:i:1530953  s1:i:15360492  s2:i:8440    dv:f:0.0000  rl:i:276450
+ptg000952l  55322     30       55309     -  Mo_LG01  65602771  29996234  30051568  51854     55346     60  tp:A:P  cm:i:5049     s1:i:51835     s2:i:118     dv:f:0.0003  rl:i:1576
+ptg000941l  123684    4        123670    -  Mo_LG01  65602771  30274784  30398420  117243    123835    60  tp:A:P  cm:i:11450    s1:i:117152    s2:i:147     dv:f:0.0003  rl:i:2650
+ptg000230l  47496     0        47487     +  Mo_LG01  65602771  38774815  38822304  47174     47493     60  tp:A:P  cm:i:4708     s1:i:47172     s2:i:0       dv:f:0.0001  rl:i:173
+ptg000146l  1390414   1        1390382   -  Mo_LG01  65602771  39708415  41099011  1380444   1390677   60  tp:A:P  cm:i:137524   s1:i:1380368   s2:i:1363    dv:f:0.0000  rl:i:16353
+ptg000937l  63242     17       63227     -  Mo_LG01  65602771  40411979  40475156  60578     63223     60  tp:A:P  cm:i:5939     s1:i:60558     s2:i:84      dv:f:0.0002  rl:i:1717
+ptg000285l  1625167   15       1625158   +  Mo_LG01  65602771  41099768  42725227  1613935   1625534   60  tp:A:P  cm:i:161039   s1:i:1613836   s2:i:359     dv:f:0.0000  rl:i:19468
+ptg000433l  121985    8        121974    -  Mo_LG01  65602771  41122412  41244384  120567    121998    60  tp:A:P  cm:i:11991    s1:i:120552    s2:i:143     dv:f:0.0001  rl:i:880
+ptg000065l  8009464   1        8009451   +  Mo_LG01  65602771  42729458  50740983  7934662   8011796   60  tp:A:P  cm:i:790676   s1:i:7934013   s2:i:5306    dv:f:0.0000  rl:i:131200
+ptg000654l  103029    38       103015    -  Mo_LG01  65602771  46371587  46474530  100161    103029    60  tp:A:P  cm:i:9799     s1:i:100126    s2:i:167     dv:f:0.0002  rl:i:589
+ptg000393l  56172     12       56170     +  Mo_LG01  65602771  47334889  47391097  53830     56234     60  tp:A:P  cm:i:5288     s1:i:53804     s2:i:466     dv:f:0.0003  rl:i:906
+ptg000263l  1077916   11       1077898   +  Mo_LG01  65602771  50802838  51879705  1064515   1078172   60  tp:A:P  cm:i:106265   s1:i:1064229   s2:i:4281    dv:f:0.0000  rl:i:19600
+ptg000133l  4688972   14       4688970   +  Mo_LG01  65602771  51882566  56618865  4665617   4736516   60  tp:A:P  cm:i:465961   s1:i:4658229   s2:i:395061  dv:f:0.0000  rl:i:43176
+ptg000080l  7492351   16       7492313   +  Mo_LG01  65602771  56638249  64131962  7443856   7494585   60  tp:A:P  cm:i:742765   s1:i:7443151   s2:i:30407   dv:f:0.0000  rl:i:83278
+ptg000490l  1781806   332      1440469   +  Mo_LG01  65602771  64156361  65602378  170162    1446585   34  tp:A:P  cm:i:13173    s1:i:169009    s2:i:77787   dv:f:0.0029  rl:i:1667349
+ptg000827c  362736    297      362314    -  Mo_LG01  65602771  64449766  64811941  49233     362327    10  tp:A:P  cm:i:3919     s1:i:49135     s2:i:40214   dv:f:0.0013  rl:i:332304
+ptg000668l  435860    6652     375021    +  Mo_LG01  65602771  64521867  64872261  23902     369243    4   tp:A:P  cm:i:1948     s1:i:20790     s2:i:18868   dv:f:0.0494  rl:i:389208
+
+==> /tmp/chris/ab.aln <==
+#nmismatch	name1	strand1	start1	end1	name2	strand2	start2	end2	text1	diff	text2
+338	Fa_LG01	+	55276493	55281923	ptg000017l	+	7942773	7948194	CCGCCGCCCG...	..x...x.:....	CCTCCGGCTG...
