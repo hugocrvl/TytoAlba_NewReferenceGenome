@@ -1,3 +1,3 @@
-# TytoAlba_NewReferenceGenome
+# A chromosome-level, haplotype-resolved genome assembly for the barn owl, *Tyto alba*
 
-A repository containing all the scripts and documents associated to the new reference of Tyto alba - DOI: 10.64898/2026.03.20.713190 
+This repository containing all the scripts and documents associated with the reference for the barn owl (*Tyto alba*) described [here](https://www.biorxiv.org/content/10.64898/2026.03.20.713190v1).
