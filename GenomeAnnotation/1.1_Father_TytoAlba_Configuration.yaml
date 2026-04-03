@@ -1,9 +1,0 @@
-genome: /work/FAC/FBM/DEE/jgoudet/barn_owl/hcorval/Chapter_NewReferenceGenome/0_FinalFiles/Final_FatherAssembly.fa
-taxid: 56313
-short_reads: /work/FAC/FBM/DEE/jgoudet/barn_owl/hcorval/Chapter_NewReferenceGenome/13_GenomeAnnotation/2.1_Path_RNAseq.txt
-protein_aligner_name: prosplign
-proteins_best_n_orgs: 5
-cmsearch:
-  enabled: false
-trnascan:
-  enabled: false
