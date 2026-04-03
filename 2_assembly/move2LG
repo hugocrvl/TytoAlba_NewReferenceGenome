@@ -1,0 +1,51 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+my $tbl = "/scratch/tyto/TableCorespondance.txt";
+my %G;
+local *IN;
+open IN, $tbl or die " Can't read $tbl : $!";
+while ( <IN> ) {
+  my @F = split /\t/;
+  $G{$F[0]} = $F[2];
+}
+close IN;
+my @L = glob "aln/{Fa,Mo}_*";
+for my $file (@L) {
+  my ($id) = $file =~ /^aln\/(.._[^_]+)_/;
+  die "grmp $file" unless defined $id;
+  my $gr = $G{$id};
+  next unless defined $gr;
+  next if $gr eq "NA";
+  $gr = "0$gr" if $gr < 10;
+  $gr = "LG$gr";
+  my $to = $file;
+  $to =~ s/^aln\//aln\/$gr\//;
+  mkdir "aln/$gr" unless -d "aln/$gr";
+  rename $file, $to or die "Can't rename $file to $to : $!";
+  #print STDERR "$file -> $to\n";
+}
+exit 0;
+__END__
+==> /scratch/tyto/TableCorespondance.txt <==
+contig	length	RG	chicken
+Fa_000031l	60665133	1	chr1
+Mo_000051l	47467806	1	chr1
+Mo_000065l	14961432	1	chr1
+Mo_000052l	3162356	1	chr1
+Fa_000052l	2541203	1	chr1
+Fa_000005l	57703426	2	chr1
+Mo_000060l	23020752	2	chr1
+Mo_000063l	22365284	2	chr1
+Mo_000040l	15743511	2	chr1
+
+Fa_000002l_22433601_22445800_a1.fa
+Fa_000002l_22433601_22445800_a1.mfa
+Fa_000002l_22433601_22445800_a2.fa
+Fa_000002l_22433601_22445800_a2.mfa
+Fa_000002l_22433601_22445800_all.fa
+Fa_000002l_22433601_22445800_all.mfa
+Fa_000002l_22433601_22445800_log.txt
+Fa_000002l_22433601_22445800_o1.fa
+Fa_000002l_22433601_22445800_o1_f.fa
+Fa_000002l_22433601_22445800_o1_f.mfa
