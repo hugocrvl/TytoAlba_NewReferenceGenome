@@ -9,11 +9,9 @@
 
 ## Description
 
-In this directory, I am going to investigate any toggling within the LG11 inversion. First, I quantify the amount of repeats across the assembly haplotypes with red.
+In this directory is described how we quantified the amount of repeats across the assembly haplotypes with Red.
 
 ## Detection with red
-
-Tristan previously installed this tool on his directory.
 
 ``` bash
 mkdir -p ./0.1_FaReference/
