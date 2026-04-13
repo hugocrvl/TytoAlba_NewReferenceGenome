@@ -41,6 +41,7 @@ Tools to transfer recombination maps onto the new reference.
 
 #### 7_Circos
 Scripts for Circos genomic visualization.
+In this directory is also described the repeat detection using RepeatModeler and RepeatMasker.
 
 #### 7_ChromosomeCategories 
 Structural chromosome classification tools.
