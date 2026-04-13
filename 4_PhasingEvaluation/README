@@ -1,0 +1,29 @@
+# Bellow is the list of commands used to evaluate the phasing accuracy of the two parental haplotypes
+
+## subsamples 80,000,000 pairs of reads for each parent
+# Father
+seqtk sample -s100 0_DATA/Father_M032330H_R1.fq.gz 80000000 > 0_DATA/Father_M032330H_R1.subsample.fq
+seqtk sample -s100 0_DATA/Father_M032330H_R2.fq.gz 80000000 > 0_DATA/Father_M032330H_R2.subsample.fq
+# mother
+seqtk sample -s100 0_DATA/Mother_M028977_R1.fq.gz 80000000 > 0_DATA/Mother_M028977_R1.subsample.fq
+seqtk sample -s100 0_DATA/Mother_M028977_R2.fq.gz 80000000 > 0_DATA/Mother_M028977_R2.subsample.fq
+
+## Count 49mers for each parent
+~/WORK/TOOLS/meryl-1.4.1/bin/meryl count threads=16 k=49 0_DATA/Father_M032330H*.subsample.fq output Father.meryl
+~/WORK/TOOLS/meryl-1.4.1/bin/meryl count threads=16 k=49 0_DATA/Mother_M028977*.subsample.fq output Mother.meryl
+
+## Identify parent-specific kmers
+~/WORK/TOOLS/meryl-1.4.1/bin/meryl threads=16 difference Father.meryl Mother.meryl output Father.unique.meryl
+~/WORK/TOOLS/meryl-1.4.1/bin/meryl threads=16 difference Mother.meryl Father.meryl output Mother.unique.meryl
+
+## process the final assemblies
+~/WORK/TOOLS/meryl-1.4.1/bin/meryl count threads=16 k=49 /work/FAC/FBM/DEE/jgoudet/barn_owl/hcorval/Chapter_NewReferenceGenome/0_FinalFiles/Final_FatherAssembly.fa output all_Fa.meryl
+~/WORK/TOOLS/meryl-1.4.1/bin/meryl count threads=16 k=49 /work/FAC/FBM/DEE/jgoudet/barn_owl/hcorval/Chapter_NewReferenceGenome/0_FinalFiles/Final_MotherAssembly.fa output all_Mo.meryl
+
+## Find the intersect between all sets of kmers
+~/WORK/TOOLS/meryl-1.4.1/bin/meryl intersect all_Fa.meryl Father.unique.meryl output all_Fa_Father.meryl
+~/WORK/TOOLS/meryl-1.4.1/bin/meryl intersect all_Fa.meryl Mother.unique.meryl output all_Fa_Mother.meryl
+
+~/WORK/TOOLS/meryl-1.4.1/bin/meryl intersect all_Mo.meryl Father.unique.meryl output all_Mo_Father.meryl
+~/WORK/TOOLS/meryl-1.4.1/bin/meryl intersect all_Mo.meryl Mother.unique.meryl output all_Mo_Mother.meryl
+
