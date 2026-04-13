@@ -4,8 +4,7 @@ This repository contains all scripts, workflows, and documentation associated wi
 
 ## Repository Structure
 
-Each of these directory has it's own README file reporting the commands line to run the steps described in this directory. 
-
+Each of these directory has its own README file reporting the commands line to run the steps described in this directory. 
 
 #### 1_AlleleSorting
 Tools for separating parental haplotypes.
