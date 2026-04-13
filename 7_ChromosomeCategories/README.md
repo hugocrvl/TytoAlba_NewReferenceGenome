@@ -7,7 +7,7 @@ For the manuscript, we need to categorise chromosomes into three categories: mac
 
 ## Data gathering
 
-GC- and repeats proportion and exonic length data have been computed in the `../Figures/Figure_4/DotChromosomes.R` script.
+GC- and repeats proportion and exonic length data have been computed in the `../Figures/Figure_3/DotChromosomes.R` script.
 
 ``` R
 # I previously computed all the *.exons, *.repeats and GC.* data.frame using the dedicated script
