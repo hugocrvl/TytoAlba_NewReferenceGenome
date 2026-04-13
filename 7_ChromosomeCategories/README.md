@@ -43,8 +43,8 @@ cp /work/FAC/FBM/DEE/jgoudet/barn_owl/tcumer/Analyses_Genome/D_NewRefGenome_2210
 
 ## Merging and creating the final data.frame
 
-I used the `./2_CategorisationPCA.R` script.
+I used the `./1_CategorisationPCA.R` script.
 
 ## PCA
 
-To perform the rest of the analysis, I wrote an R script, `./2_CategorisationPCA.R`.
+To perform the rest of the analysis, I wrote an R script, `./1_CategorisationPCA.R`.
